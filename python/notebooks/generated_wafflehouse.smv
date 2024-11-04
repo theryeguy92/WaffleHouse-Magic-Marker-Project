@@ -4,17 +4,24 @@ VAR
     hashbrowns_top : boolean;
     tomato_top : boolean;
     napkin_top : boolean;
+    jelly_flipped : boolean;
+    apple_jelly_bottom : boolean;
+    extra_jelly : boolean;
+    butter_underneath : boolean;
+    mustard_under_jelly : boolean;
+    two_jelly_stack : boolean;
     scrambled_eggs : boolean;
     grits : boolean;
     oatmeal : boolean;
     brown_sugar_top : boolean;
 
 INIT
-    !jelly_bottom & !hashbrowns_top & !tomato_top & !napkin_top & !scrambled_eggs & !grits & !oatmeal & !brown_sugar_top;
+    !jelly_bottom & !hashbrowns_top & !tomato_top & !napkin_top & !jelly_flipped & !apple_jelly_bottom & !extra_jelly & !butter_underneath & !mustard_under_jelly & !two_jelly_stack & !scrambled_eggs & !grits & !oatmeal & !brown_sugar_top;
 
 TRANS
     (jelly_bottom -> scrambled_eggs) &
-    (hashbrowns_top -> (scrambled_eggs & !grits));
+    (hashbrowns_top -> (scrambled_eggs & !grits)) &
+    (oatmeal -> (napkin_top & brown_sugar_top));
 
 -- Formal Specifications
 LTLSPEC G (jelly_bottom -> scrambled_eggs);
