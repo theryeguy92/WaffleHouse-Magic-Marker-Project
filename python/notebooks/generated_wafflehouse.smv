@@ -7,13 +7,14 @@ VAR
     scrambled_eggs : boolean;
     grits : boolean;
     oatmeal : boolean;
+    brown_sugar_top : boolean;
 
 INIT
-    !jelly_bottom & !hashbrowns_top & !tomato_top & !napkin_top & !scrambled_eggs & !grits & !oatmeal;
+    !jelly_bottom & !hashbrowns_top & !tomato_top & !napkin_top & !scrambled_eggs & !grits & !oatmeal & !brown_sugar_top;
 
 TRANS
     (jelly_bottom -> scrambled_eggs) &
-    (hashbrowns_top -> (scrambled_eggs & !grits)) &
+    (hashbrowns_top -> (scrambled_eggs & !grits));
 
 -- Formal Specifications
 LTLSPEC G (jelly_bottom -> scrambled_eggs);
