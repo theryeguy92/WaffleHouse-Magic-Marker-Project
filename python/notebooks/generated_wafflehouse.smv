@@ -1,0 +1,21 @@
+MODULE main
+VAR
+    jelly_bottom : boolean;
+    hashbrowns_top : boolean;
+    tomato_top : boolean;
+    napkin_top : boolean;
+    scrambled_eggs : boolean;
+    grits : boolean;
+    oatmeal : boolean;
+
+INIT
+    !jelly_bottom & !hashbrowns_top & !tomato_top & !napkin_top & !scrambled_eggs & !grits & !oatmeal;
+
+TRANS
+    (jelly_bottom -> scrambled_eggs) &
+    (hashbrowns_top -> (scrambled_eggs & !grits)) &
+
+-- Formal Specifications
+LTLSPEC G (jelly_bottom -> scrambled_eggs);
+LTLSPEC G (oatmeal -> F(napkin_top & brown_sugar_top));
+LTLSPEC !(hashbrowns_top & tomato_top);

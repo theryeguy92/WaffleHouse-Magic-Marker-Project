@@ -33,6 +33,9 @@ In the event hashbrowns are added to replace grits, hashbrowns are placed on the
 
 There are multiple combinations to mark specific orders. Of which will be modeled in this project. 
 
+The image below illustrates the Magic Marker system in greater detail.
+
+![waffle_house_magic_marker_graph.jpg](waffle_house_magic_marker_graph.jpg)
 
 <h2> Objectives </h2>
 
