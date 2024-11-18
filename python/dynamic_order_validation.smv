@@ -1,0 +1,25 @@
+MODULE main
+VAR
+    jelly_bottom : boolean;
+    hashbrowns_top : boolean;
+    oatmeal : boolean;
+    jelly_flipped : boolean;
+    apple_jelly_bottom : boolean;
+    scrambled_eggs : boolean;
+    grits : boolean;
+    napkin_top : boolean;
+    brown_sugar_top : boolean;
+
+INIT
+    jelly_bottom = FALSE & hashbrowns_top = TRUE & oatmeal = FALSE & jelly_flipped = FALSE & apple_jelly_bottom = FALSE & scrambled_eggs = TRUE & grits = FALSE & napkin_top = FALSE & brown_sugar_top = FALSE;
+
+TRANS
+    (jelly_bottom -> scrambled_eggs) &
+    (hashbrowns_top -> (scrambled_eggs & !grits)) &
+    (oatmeal -> (napkin_top & brown_sugar_top)) &
+    (!hashbrowns_top | (scrambled_eggs & !grits)) &
+    (!oatmeal | (napkin_top & brown_sugar_top)) &
+    (!scrambled_eggs | jelly_bottom | hashbrowns_top) &
+    !(hashbrowns_top & grits) &
+    !(oatmeal & jelly_flipped) &
+    !(scrambled_eggs & grits);
