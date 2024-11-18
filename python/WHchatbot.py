@@ -159,15 +159,21 @@ def waffle_house_chatbot(order=None):
     # Step 5: Generate LLM response
     print("\nBoth validations passed. Generating response...")
     llm_prompt = (
-        "You are a Waffle House server. Respond politely and appropriately to the customer's order.\n\n"
+        "You are a friendly Waffle House server. Respond politely, with some enthusiasm, to the customer's order.\n\n"
         "Customer Order: \"{order}\"\nServer Response:"
     )
+
     llm_response = llm(llm_prompt.format(order=order), max_length=150, truncation=True)
-    processed_response = llm_response[0]["generated_text"]
+    # Clean up the response
+    processed_response = (
+        llm_response[0]["generated_text"]
+        .split("Server Response:")[1]
+        .strip()
+    )
 
     # Display the LLM response
     print("\nLLM Response:")
-    print(processed_response)
+    print(f"Server Response: {processed_response}")
 
 # Main function
 if __name__ == "__main__":
