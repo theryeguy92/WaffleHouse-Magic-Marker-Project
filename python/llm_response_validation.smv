@@ -1,0 +1,28 @@
+MODULE main
+VAR
+    acknowledged_order : boolean;
+    included_items : boolean;
+    explained_plate_markings : boolean;
+
+INIT
+    !acknowledged_order & !included_items & !explained_plate_markings;
+
+TRANS
+    -- Transition rules:
+    -- Acknowledging order enables including items.
+    (!acknowledged_order -> next(!included_items)) &
+    -- Including items enables explaining plate markings.
+    (!included_items -> next(!explained_plate_markings)) &
+    -- Persistence: Once a state becomes true, it stays true.
+    (acknowledged_order -> next(acknowledged_order)) &
+    (included_items -> next(included_items)) &
+    (explained_plate_markings -> next(explained_plate_markings)) &
+    -- Once acknowledged_order is TRUE, included_items must eventually be TRUE.
+    (acknowledged_order -> next(included_items)) &
+    -- Once included_items is TRUE, explained_plate_markings must eventually be TRUE.
+    (included_items -> next(explained_plate_markings));
+
+-- Specifications:
+-- LTL requirements for valid server behavior
+LTLSPEC G (acknowledged_order -> F included_items);
+LTLSPEC G (included_items -> F explained_plate_markings);
