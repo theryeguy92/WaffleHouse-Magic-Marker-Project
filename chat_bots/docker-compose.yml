@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  llm:
+    build:
+      context: C:/Users/Ryan Levey/OneDrive/Bureaublad/vandy_cs/CS 6315/final_project/waffle_house_project/llm
+    container_name: llm
+    ports:
+      - "5000:5000"
+    networks:
+      - waffle_house_network
+
+  chatbot:
+    build:
+      context: C:/Users/Ryan Levey/OneDrive/Bureaublad/vandy_cs/CS 6315/final_project/waffle_house_project/chat_bots
+    container_name: chatbot
+    volumes:
+      - C:/Users/Ryan Levey/OneDrive/Bureaublad/vandy_cs/CS 6315/final_project/waffle_house_project/smv_files:/app/smv_files
+    networks:
+      - waffle_house_network
+    depends_on:
+      - llm
+
+networks:
+  waffle_house_network:
+    external: true
