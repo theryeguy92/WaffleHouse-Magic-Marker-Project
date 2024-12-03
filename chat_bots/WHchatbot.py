@@ -1,13 +1,14 @@
 import os
-import subprocess
+import time
 import requests
-from transformers import pipeline
 
 # Suppress symlink warnings
 os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 
 # Paths for .smv files
+SMV_DIR = "/app/smv_files"
 LLM_RESPONSE_VALIDATION_SMV = "llm_response_validation.smv"
+ORDER_ACKNOWLEDGEMENT_SMV = "order_acknowledgement.smv"
 MARKING_VALIDATION_SMV = "marking_validation.smv"
 
 # Predefined waffle tokens and markers
@@ -19,34 +20,41 @@ waffle_tokens = {
     "raisin toast": "apple_jelly_bottom",
 }
 
-# Function to run nuXmv inside the container
-def run_nuxmv_in_container(smv_file):
-    try:
-        # Execute nuXmv inside the `nuxmv` container
-        result = subprocess.run(
-            ["docker", "exec", "nuxmv", "nuXmv", f"/app/smv_files/{smv_file}"],
-            capture_output=True,
-            text=True,
-        )
-        output = result.stdout
-        errors = result.stderr
+# Function to run nuXmv by writing to the shared volume
+def run_nuxmv(smv_file_name, smv_content=None):
+    smv_file_path = os.path.join(SMV_DIR, smv_file_name)
 
-        if errors:
-            print(f"[ERROR] nuXmv encountered an error:\n{errors}")
+    # If smv_content is provided, write it to the smv_file
+    if smv_content is not None:
+        with open(smv_file_path, "w") as smv_file:
+            smv_file.write(smv_content)
+    else:
+        # Ensure the smv_file exists
+        if not os.path.exists(smv_file_path):
+            print(f"SMV file {smv_file_name} does not exist in {SMV_DIR}")
             return False, None
 
-        print(f"[nuXmv OUTPUT]\n{output}")
+    # Wait for the output file
+    output_file_path = smv_file_path + ".output"
+    timeout = 60  # Increase timeout if needed
+    start_time = time.time()
+    while not os.path.exists(output_file_path):
+        if time.time() - start_time > timeout:
+            print(f"Timeout waiting for nuXmv to process the file: {smv_file_name}")
+            return False, None
+        time.sleep(1)
 
-        if "is false" in output:
-            print("\nValidation failed. Counterexamples found.")
-            return False, output
-        else:
-            print("\nValidation passed.")
-            return True, output
+    # Read the output
+    with open(output_file_path, "r") as output_file:
+        output = output_file.read()
 
-    except Exception as e:
-        print(f"Error running nuXmv: {e}")
-        return False, None
+    # Check for errors in output
+    if "is false" in output:
+        print(f"\nValidation failed for {smv_file_name}. Counterexamples found.")
+        return False, output
+    else:
+        print(f"\nValidation passed for {smv_file_name}.")
+        return True, output
 
 # Function to communicate with the LLM container
 def query_llm(prompt):
@@ -77,37 +85,15 @@ def waffle_house_chatbot(order=None):
         print("Hi! Welcome to Waffle House! Can I take your order?")
         order = input("Your order: ")
 
-    # Step 1: Validate the Waffle House setting
-    print("\nValidating Waffle House setting...")
-    setting_valid, _ = run_nuxmv_in_container(LLM_RESPONSE_VALIDATION_SMV)
+    # Step 1: Validate the order acknowledgement
+    print("\nValidating order acknowledgement...")
+    acknowledgement_valid, _ = run_nuxmv(ORDER_ACKNOWLEDGEMENT_SMV)
 
-    if not setting_valid:
-        print("\nWaffle House setting validation failed. Unable to proceed.")
+    if not acknowledgement_valid:
+        print("\nOrder acknowledgement validation failed. Unable to proceed.")
         return
 
-    # Step 2: Tokenize the order for SMV validation
-    smv_vars = tokenize_to_smv_variables(order)
-
-    # Step 3: Generate dynamic order validation SMV file
-    smv_order_file = "dynamic_order_validation.smv"
-    with open(smv_order_file, "w") as smv_file:
-        smv_file.write("MODULE main\nVAR\n")
-        for var in smv_vars.keys():
-            smv_file.write(f"    {var} : boolean;\n")
-
-        smv_file.write("\nINIT\n")
-        init_conditions = [f"{var} = {state}" for var, state in smv_vars.items()]
-        smv_file.write("    " + " & ".join(init_conditions) + ";\n")
-
-    # Step 4: Validate the order marking
-    print("\nValidating order marking...")
-    order_valid, validation_output = run_nuxmv_in_container(smv_order_file)
-
-    if not order_valid:
-        print("\nOrder validation failed. Please modify your order and try again.")
-        return
-
-    # Step 5: Generate response using the LLM
+    # Step 2: Generate response using the LLM
     llm_prompt = (
         f"The customer ordered: {order}\n"
         "Respond as a Waffle House server. Acknowledge the order in a polite way and explain how it will be marked."
@@ -119,15 +105,27 @@ def waffle_house_chatbot(order=None):
         print("\nFailed to generate response from LLM.")
         return
 
-    # Step 6: Validate the response
-    print("\nValidating response acknowledgment...")
-    response_valid, _ = run_nuxmv_in_container(MARKING_VALIDATION_SMV)
+    # Step 3: Validate the marking after LLM response
+    print("\nValidating marking...")
+    # Tokenize the order for SMV validation
+    smv_vars = tokenize_to_smv_variables(order)
 
-    if not response_valid:
-        print("\nResponse validation failed. Please review the LLM's response.")
+    # Generate dynamic marking validation SMV content
+    smv_marking_content = "MODULE main\nVAR\n"
+    for var in smv_vars.keys():
+        smv_marking_content += f"    {var} : boolean;\n"
+
+    smv_marking_content += "\nINIT\n"
+    init_conditions = [f"{var} = {state}" for var, state in smv_vars.items()]
+    smv_marking_content += "    " + " & ".join(init_conditions) + ";\n"
+
+    marking_valid, _ = run_nuxmv("dynamic_marking_validation.smv", smv_marking_content)
+
+    if not marking_valid:
+        print("\nMarking validation failed. Please review the LLM's response.")
         return
 
-    # Step 7: Display the validated response
+    # Step 4: Display the validated response
     print("\nLLM Response:")
     print(llm_response.strip())
 
