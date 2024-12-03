@@ -1,20 +1,14 @@
 import os
 import subprocess
+import requests
 from transformers import pipeline
 
 # Suppress symlink warnings
 os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 
-# Load Hugging Face model for text generation
-llm = pipeline(
-    "text-generation",
-    model="EleutherAI/gpt-neo-125M",
-    device=-1  # Use -1 for CPU, 0 for GPU if available
-)
-
-# Paths for nuXmv executable and .smv files
-NUXMV_PATH = r"C:\Users\Ryan Levey\OneDrive\Bureaublad\vandy_cs\CS 6315\hw3\cs6315_hw03\nuxmv.exe"
-WAFFLE_HOUSE_SMV = "llm_response_validation.smv"
+# Paths for .smv files
+LLM_RESPONSE_VALIDATION_SMV = "llm_response_validation.smv"
+MARKING_VALIDATION_SMV = "marking_validation.smv"
 
 # Predefined waffle tokens and markers
 waffle_tokens = {
@@ -25,26 +19,14 @@ waffle_tokens = {
     "raisin toast": "apple_jelly_bottom",
 }
 
-response_tokens = {
-    "acknowledge_order": "Sure! Here is your order",
-    "mention_plates": "This is how I will mark it",
-    "valid_phrase_used": "Thanks for ordering at Waffle House"
-}
-
-# Function to run nuXmv interactively and capture results
-def run_nuxmv_interactively(smv_file):
+# Function to run nuXmv inside the container
+def run_nuxmv_in_container(smv_file):
     try:
-        commands = f"""
-read_model -i {smv_file}
-go
-check_ltlspec
-quit
-"""
+        # Execute nuXmv inside the `nuxmv` container
         result = subprocess.run(
-            [NUXMV_PATH],
-            input=commands,
+            ["docker", "exec", "nuxmv", "nuXmv", f"/app/smv_files/{smv_file}"],
+            capture_output=True,
             text=True,
-            capture_output=True
         )
         output = result.stdout
         errors = result.stderr
@@ -63,8 +45,23 @@ quit
             return True, output
 
     except Exception as e:
-        print(f"Error running nuXmv interactively: {e}")
+        print(f"Error running nuXmv: {e}")
         return False, None
+
+# Function to communicate with the LLM container
+def query_llm(prompt):
+    try:
+        response = requests.post(
+            "http://llm:5000/generate/",
+            json={"prompt": prompt, "max_length": 150},
+        )
+        response_data = response.json()
+        if "error" in response_data:
+            raise Exception(response_data["error"])
+        return response_data["generated_text"]
+    except Exception as e:
+        print(f"Error querying LLM: {e}")
+        return None
 
 # Tokenize user input into SMV variables
 def tokenize_to_smv_variables(order):
@@ -74,33 +71,7 @@ def tokenize_to_smv_variables(order):
             smv_vars[marker] = "TRUE"
     return smv_vars
 
-# Generate response validation SMV file
-def generate_order_acknowledgement_smv(response):
-    smv_file = "order_acknowledgement.smv"
-    smv_vars = {token: "FALSE" for token in response_tokens.keys()}
-
-    # Tokenize response to mark relevant variables
-    for token, phrase in response_tokens.items():
-        if phrase.lower() in response.lower():
-            smv_vars[token] = "TRUE"
-
-    with open(smv_file, "w") as smv:
-        smv.write("MODULE main\nVAR\n")
-        for var in smv_vars:
-            smv.write(f"    {var} : boolean;\n")
-        smv.write("\nINIT\n")
-        init_conditions = [f"{var} = {state}" for var, state in smv_vars.items()]
-        smv.write("    " + " & ".join(init_conditions) + ";\n")
-        smv.write("\nTRANS\n")
-        smv.write("    (acknowledge_order -> valid_phrase_used) &\n")
-        smv.write("    (mention_plates -> acknowledge_order) &\n")
-        smv.write("    (valid_phrase_used -> next(valid_phrase_used)) &\n")
-        smv.write("    (acknowledge_order -> next(acknowledge_order));\n")
-        smv.write("\nLTLSPEC G (acknowledge_order -> F valid_phrase_used);\n")
-        smv.write("LTLSPEC G (mention_plates -> F acknowledge_order);\n")
-    return smv_file
-
-# Chatbot function
+# Main chatbot function
 def waffle_house_chatbot(order=None):
     if order is None:
         print("Hi! Welcome to Waffle House! Can I take your order?")
@@ -108,7 +79,7 @@ def waffle_house_chatbot(order=None):
 
     # Step 1: Validate the Waffle House setting
     print("\nValidating Waffle House setting...")
-    setting_valid, _ = run_nuxmv_interactively(WAFFLE_HOUSE_SMV)
+    setting_valid, _ = run_nuxmv_in_container(LLM_RESPONSE_VALIDATION_SMV)
 
     if not setting_valid:
         print("\nWaffle House setting validation failed. Unable to proceed.")
@@ -117,7 +88,7 @@ def waffle_house_chatbot(order=None):
     # Step 2: Tokenize the order for SMV validation
     smv_vars = tokenize_to_smv_variables(order)
 
-    # Step 3: Export order-specific SMV file for validation
+    # Step 3: Generate dynamic order validation SMV file
     smv_order_file = "dynamic_order_validation.smv"
     with open(smv_order_file, "w") as smv_file:
         smv_file.write("MODULE main\nVAR\n")
@@ -128,44 +99,38 @@ def waffle_house_chatbot(order=None):
         init_conditions = [f"{var} = {state}" for var, state in smv_vars.items()]
         smv_file.write("    " + " & ".join(init_conditions) + ";\n")
 
-        smv_file.write("\nTRANS\n")
-        smv_file.write("    (jelly_bottom -> scrambled_eggs) &\n")
-        smv_file.write("    (hashbrowns_top -> (scrambled_eggs & !grits)) &\n")
-        smv_file.write("    (oatmeal -> (napkin_top & brown_sugar_top));\n")
-
-    print("\n[DEBUG] Generated dynamic_order_validation.smv:")
-    with open(smv_order_file, "r") as smv_debug_file:
-        print(smv_debug_file.read())
-
     # Step 4: Validate the order marking
     print("\nValidating order marking...")
-    order_valid, validation_output = run_nuxmv_interactively(smv_order_file)
+    order_valid, validation_output = run_nuxmv_in_container(smv_order_file)
 
     if not order_valid:
         print("\nOrder validation failed. Please modify your order and try again.")
         return
 
-    # Step 5: Generate LLM response
+    # Step 5: Generate response using the LLM
     llm_prompt = (
         f"The customer ordered: {order}\n"
         "Respond as a Waffle House server. Acknowledge the order in a polite way and explain how it will be marked."
     )
     print("\nGenerating response with LLM...")
-    llm_response = llm(llm_prompt, max_length=150, truncation=True)
-    response_text = llm_response[0]["generated_text"]
+    llm_response = query_llm(llm_prompt)
 
-    # Validate response
+    if not llm_response:
+        print("\nFailed to generate response from LLM.")
+        return
+
+    # Step 6: Validate the response
     print("\nValidating response acknowledgment...")
-    response_valid, _ = run_nuxmv_interactively(generate_order_acknowledgement_smv(response_text))
+    response_valid, _ = run_nuxmv_in_container(MARKING_VALIDATION_SMV)
 
     if not response_valid:
         print("\nResponse validation failed. Please review the LLM's response.")
         return
 
-    # Display the validated response
+    # Step 7: Display the validated response
     print("\nLLM Response:")
-    print(response_text.strip())
+    print(llm_response.strip())
 
-# Main function
+# Entry point for the script
 if __name__ == "__main__":
     waffle_house_chatbot()
