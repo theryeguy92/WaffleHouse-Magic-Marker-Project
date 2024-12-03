@@ -95,8 +95,8 @@ def waffle_house_chatbot(order=None):
 
     # Step 2: Generate response using the LLM
     llm_prompt = (
-        f"The customer ordered: {order}\n"
-        "Respond as a Waffle House server. Acknowledge the order in a polite way and explain how it will be marked."
+        f"Customer: {order}\n"
+        "Server:"
     )
     print("\nGenerating response with LLM...")
     llm_response = query_llm(llm_prompt)
