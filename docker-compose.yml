@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   chatbot:
     build:
@@ -12,6 +10,9 @@ services:
     depends_on:
       - llm
       - nuxmv
+    tty: true
+    stdin_open: true
+
 
   llm:
     build:

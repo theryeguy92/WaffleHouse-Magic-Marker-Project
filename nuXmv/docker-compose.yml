@@ -1,8 +1,0 @@
-services:
-  nuxmv:
-    build:
-      context: .
-    container_name: nuxmv
-    volumes:
-      - C:/Users/Ryan Levey/OneDrive/Bureaublad/vandy_cs/CS 6315/final_project/waffle_house_project/smv_files:/app/smv_files
-    command: ["/opt/nuxmv/bin/nuXmv", "/app/smv_files/llm_response_validation.smv"]

@@ -5,6 +5,7 @@ FROM debian:bullseye-slim
 RUN apt-get update && apt-get install -y \
     wget \
     unzip \
+    inotify-tools \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
@@ -19,5 +20,9 @@ RUN wget "https://nuxmv.fbk.eu/theme/download.php?file=nuXmv-2.0.0-linux64.tar.g
 # Add /opt/nuxmv/bin to PATH
 ENV PATH="/opt/nuxmv/bin:${PATH}"
 
-# Default command
-CMD ["nuXmv"]
+# Copy entrypoint script
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Set entrypoint
+ENTRYPOINT ["/entrypoint.sh"]
