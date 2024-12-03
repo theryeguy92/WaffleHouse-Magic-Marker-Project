@@ -7,9 +7,7 @@ os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 
 # Paths for .smv files
 SMV_DIR = "/app/smv_files"
-LLM_RESPONSE_VALIDATION_SMV = "llm_response_validation.smv"
 ORDER_ACKNOWLEDGEMENT_SMV = "order_acknowledgement.smv"
-MARKING_VALIDATION_SMV = "marking_validation.smv"
 
 # Predefined waffle tokens and markers
 waffle_tokens = {
@@ -18,6 +16,15 @@ waffle_tokens = {
     "oatmeal": "oatmeal",
     "wheat toast": "jelly_flipped",
     "raisin toast": "apple_jelly_bottom",
+}
+
+# Mapping from SMV variables to plate markings
+plate_markings_map = {
+    "jelly_bottom": "jelly packet: Bottom",
+    "hashbrowns_top": "hashbrown: Top",
+    "oatmeal": "napkin: Top",
+    "jelly_flipped": "jelly packet: Flipped",
+    "apple_jelly_bottom": "apple jelly packet: Bottom",
 }
 
 # Function to run nuXmv by writing to the shared volume
@@ -71,14 +78,6 @@ def query_llm(prompt):
         print(f"Error querying LLM: {e}")
         return None
 
-# Tokenize user input into SMV variables
-def tokenize_to_smv_variables(order):
-    smv_vars = {token: "FALSE" for token in waffle_tokens.values()}
-    for item, marker in waffle_tokens.items():
-        if item in order.lower():
-            smv_vars[marker] = "TRUE"
-    return smv_vars
-
 # Main chatbot function
 def waffle_house_chatbot(order=None):
     if order is None:
@@ -93,22 +92,25 @@ def waffle_house_chatbot(order=None):
         print("\nOrder acknowledgement validation failed. Unable to proceed.")
         return
 
-    # Step 2: Generate response using the LLM
+    # Step 2: Generate acknowledgment using the LLM
     llm_prompt = (
-        f"Customer: {order}\n"
-        "Server:"
+        f"The customer ordered: {order}\n"
+        "As a Waffle House server, acknowledge the order politely."
     )
-    print("\nGenerating response with LLM...")
+    print("\nGenerating acknowledgment with LLM...")
     llm_response = query_llm(llm_prompt)
 
     if not llm_response:
-        print("\nFailed to generate response from LLM.")
+        print("\nFailed to generate acknowledgment from LLM.")
         return
 
     # Step 3: Validate the marking after LLM response
     print("\nValidating marking...")
     # Tokenize the order for SMV validation
-    smv_vars = tokenize_to_smv_variables(order)
+    smv_vars = {token: "FALSE" for token in waffle_tokens.values()}
+    for item, marker in waffle_tokens.items():
+        if item in order.lower():
+            smv_vars[marker] = "TRUE"
 
     # Generate dynamic marking validation SMV content
     smv_marking_content = "MODULE main\nVAR\n"
@@ -125,9 +127,18 @@ def waffle_house_chatbot(order=None):
         print("\nMarking validation failed. Please review the LLM's response.")
         return
 
-    # Step 4: Display the validated response
+    # Step 4: Extract plate markings based on the SMV variables
+    plate_markings = []
+    for var, state in smv_vars.items():
+        if state == "TRUE" and var in plate_markings_map:
+            plate_markings.append(f"{plate_markings_map[var]}")
+
+    # Step 5: Display the validated response
     print("\nLLM Response:")
     print(llm_response.strip())
+    print("\nMarkings:")
+    for marking in plate_markings:
+        print(marking)
 
 # Entry point for the script
 if __name__ == "__main__":

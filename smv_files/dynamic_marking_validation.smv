@@ -7,4 +7,4 @@ VAR
     apple_jelly_bottom : boolean;
 
 INIT
-    jelly_bottom = FALSE & hashbrowns_top = TRUE & oatmeal = FALSE & jelly_flipped = FALSE & apple_jelly_bottom = FALSE;
+    jelly_bottom = TRUE & hashbrowns_top = TRUE & oatmeal = FALSE & jelly_flipped = FALSE & apple_jelly_bottom = FALSE;
