@@ -1,0 +1,37 @@
+services:
+  chatbot:
+    build:
+      context: ./chat_bots
+    container_name: chatbot
+    volumes:
+      - ./smv_files:/app/smv_files
+    networks:
+      - waffle_house_network
+    depends_on:
+      - llm
+      - nuxmv
+    tty: true
+    stdin_open: true
+
+
+  llm:
+    build:
+      context: ./llm
+    container_name: llm
+    ports:
+      - "5000:5000"
+    networks:
+      - waffle_house_network
+
+  nuxmv:
+    build:
+      context: ./nuXmv
+    container_name: nuxmv
+    volumes:
+      - ./smv_files:/app/smv_files
+    networks:
+      - waffle_house_network
+
+networks:
+  waffle_house_network:
+    driver: bridge
