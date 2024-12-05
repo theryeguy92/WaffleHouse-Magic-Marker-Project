@@ -82,9 +82,29 @@ def run_nuxmv(smv_content, smv_filename_prefix="validation"):
 def tokenize_to_smv_variables(order):
     smv_vars = {var: "FALSE" for var in waffle_tokens.values()}
     order_lower = order.lower()
+
+    # Determine if specific items are in the order
+    has_scrambled_eggs = "scrambled eggs" in order_lower
+    has_wheat_toast = "wheat toast" in order_lower
+    has_raisin_toast = "raisin toast" in order_lower
+    has_white_toast = "white toast" in order_lower or ("toast" in order_lower and not has_wheat_toast and not has_raisin_toast)
+
+    # Set variables based on the order
+    if has_scrambled_eggs:
+        if has_wheat_toast:
+            smv_vars["jelly_flipped"] = "TRUE"
+        elif has_raisin_toast:
+            smv_vars["apple_jelly_bottom"] = "TRUE"
+        else:
+            # Default to white toast if no toast type specified
+            smv_vars["jelly_bottom"] = "TRUE"
+    # Check for other items
     for item, var in waffle_tokens.items():
+        if item in ["scrambled eggs", "wheat toast", "raisin toast"]:
+            continue  # Already handled
         if item in order_lower:
             smv_vars[var] = "TRUE"
+
     return smv_vars
 
 # Function to communicate with the LLM container

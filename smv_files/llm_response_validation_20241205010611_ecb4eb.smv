@@ -1,0 +1,30 @@
+MODULE main
+VAR
+    jelly_bottom : boolean;
+    hashbrowns_top : boolean;
+    oatmeal : boolean;
+    jelly_flipped : boolean;
+    apple_jelly_bottom : boolean;
+    acknowledged_order : boolean;
+    included_items : boolean;
+    explained_plate_markings : boolean;
+
+INIT
+    jelly_bottom = FALSE & hashbrowns_top = FALSE & oatmeal = FALSE & jelly_flipped = FALSE & apple_jelly_bottom = FALSE & acknowledged_order = TRUE & included_items = FALSE & explained_plate_markings = FALSE;
+
+-- Transition relations
+TRANS
+    -- Acknowledging enables including items.
+    (acknowledged_order -> next(included_items)) &
+    -- Including enables explaining plate markings.
+    (included_items -> next(explained_plate_markings)) &
+    -- States persist once true.
+    (acknowledged_order -> next(acknowledged_order)) &
+    (included_items -> next(included_items)) &
+    (explained_plate_markings -> next(explained_plate_markings));
+
+-- Specifications:
+-- LTL requirements for valid server behavior
+LTLSPEC G (acknowledged_order -> F included_items);
+LTLSPEC G (included_items -> F explained_plate_markings);
+LTLSPEC F (acknowledged_order & included_items & explained_plate_markings);
