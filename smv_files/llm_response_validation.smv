@@ -1,13 +1,4 @@
-MODULE main
-VAR
-    acknowledged_order : boolean;
-    included_items : boolean;
-    explained_plate_markings : boolean;
-
-INIT
-    acknowledged_order = FALSE & included_items = FALSE & explained_plate_markings = FALSE;
-
-
+-- Transition relations
 TRANS
     -- Acknowledging enables including items.
     (acknowledged_order -> next(included_items)) &
@@ -17,7 +8,6 @@ TRANS
     (acknowledged_order -> next(acknowledged_order)) &
     (included_items -> next(included_items)) &
     (explained_plate_markings -> next(explained_plate_markings));
-
 
 -- Specifications:
 -- LTL requirements for valid server behavior
