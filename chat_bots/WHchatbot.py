@@ -60,12 +60,10 @@ def run_nuxmv(smv_content, smv_filename_prefix="validation"):
         print("Timeout waiting for nuXmv output.")
         return False
 
-    # Read the output
+    
     with open(output_file_path, "r") as output_file:
         output = output_file.read()
 
-    # Optionally, clean up the output file (keeping the .smv file)
-    # os.remove(output_file_path)
 
     # Check for errors in output
     if "Parser error" in output or "Error" in output or "terminated by a signal" in output:
